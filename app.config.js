@@ -1,8 +1,7 @@
 require('dotenv').config()
 
 const apiKey = process.env.GOOGLE_MAPS_API_KEY
-
-const appConfig = {
+module.exports = {
   "expo": {
     "plugins": [
       [
@@ -55,7 +54,4 @@ const appConfig = {
       }
     }
   }
-}
-
-const fs = require('fs')
-fs.writeFileSync('app.json', JSON.stringify(appConfig))
+};
