@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, Alert } from 'react-native';
 import { ParamListBase, useNavigation, useFocusEffect } from '@react-navigation/native';
 import styled from 'styled-components/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,7 +18,7 @@ async function makeDatabase() {
   const db = SQLite.openDatabase(internalDbName);
   db.transaction((trx) => {
     trx.executeSql(
-      'CREATE TABLE IF NOT EXISTS hospital (id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_name text, district text, contact text, address text, favorite integer);',
+      'CREATE TABLE IF NOT EXISTS hospital (id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_name text, district text, contact text, address text, favorite integer, latitude text, longitude text, unique (hospital_name));',
     )
   });
 
@@ -37,10 +37,13 @@ async function makeDatabase() {
           const district = args[1];
           const contact = args[2];
           const address = args[3];
-          const favorite = args[4][0];
+          const favorite = args[4];
+          const latitude = args[5];
+          const longitude = args[6];
+
           db.transaction((trx) => {
             trx.executeSql(
-              `INSERT INTO hospital (hospital_name, district, contact, address, favorite) VALUES ("${hospital_name}", "${district}", "${contact}", "${address}", ${favorite})`,
+              `INSERT INTO hospital (hospital_name, district, contact, address, favorite, latitude, longitude) VALUES ("${hospital_name}", "${district}", "${contact}", "${address}", ${favorite}, "${latitude}", "${longitude}")`,
             )
           });
         }
@@ -81,9 +84,19 @@ const HomeScreen = () => {
     BackHandler.exitApp();
   };
 
+  const createTwoButtonAlert = () =>
+    Alert.alert('내손에 치매안심주치의', '어플리케이션을 종료하시겠습니까?', [
+      {
+        text: '취소',
+        onPress: () => console.log('Cancel Pressed'),
+        style: 'cancel',
+      },
+      {text: '종료하기', onPress: () => handleExit()},
+    ]);
+
   useFocusEffect(
     React.useCallback(() => {
-      const onBackPress = () => true;
+      const onBackPress = () => {createTwoButtonAlert(); return true;}
       BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
     }, [])
@@ -109,8 +122,7 @@ const HomeScreen = () => {
     <View style={style.container}>
       <Text style={style.title}>내손에 치매안심주치의</Text>
       <View style={style.map}>
-        <Image style={{ width: 400, height: 400, resizeMode: 'contain' }} source={require('#/imgs/mapImage.png')} />
-        {/* <MapView style={style.mapStyle} 
+        <MapView style={style.mapStyle} 
           region={{ 
             latitude: location?.coords?.latitude ?? 37.00000,
             longitude: location?.coords?.longitude ?? 126.00000,
@@ -128,7 +140,7 @@ const HomeScreen = () => {
             title='내 위치'
             description='내 위치'
           />
-        </MapView> */}
+        </MapView>
       </View>
       <View style={style.content}>
         <View style={style.buttonBox}>

@@ -4,6 +4,8 @@ import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import styled from 'styled-components/native';
 import { Linking } from 'react-native';
+import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 
 const internalDbName = "hospital.db";
 
@@ -82,12 +84,16 @@ type Hospital = {
   contact: string;
   id: number;
   favorite: boolean;
+  latitude: string;
+  longitude: string;
 };
 
 const DetailScreen = () => {
   const route = useRoute<RouteProp<ParamList, 'routeParam'>>();
   const { color, title } = route.params;
   const [ hospital, setHospital ] = useState([] as Hospital[]);
+  const [ location, setLocation ] = useState<Location.LocationObject | null>(null);
+  const [ errorMsg, setErrorMsg ] = useState<string | null>(null);
 
   const loadAsync = async () => {
     await getHospitalLists(title, setHospital);
@@ -108,14 +114,58 @@ const DetailScreen = () => {
   }
 
   useEffect(() => {
-    loadAsync();
+    (async () => {
+      await loadAsync();
+      let { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied.');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync();
+      setLocation(location);
+    })();
   }, []);
 
   return (
     <View style={style.container}>
       <Title color={color}>{title}</Title>
       <View style={style.map}>
-        <Image style={{ width: 200, height: 200 }} source={require('#/imgs/mapImage.png')} />
+        <MapView style={style.mapStyle} 
+          region={{ 
+            latitude: location?.coords?.latitude ?? 37.00000,
+            longitude: location?.coords?.longitude ?? 126.00000,
+            latitudeDelta: 0.025,
+            longitudeDelta: 0.025,
+          }}
+          provider={PROVIDER_GOOGLE}
+        >
+          <Marker
+            coordinate={{
+              latitude: location?.coords?.latitude ?? 37.00000,
+              longitude: location?.coords?.longitude ?? 126.00000,
+            }}
+            pinColor='#fc324e'
+            title='내 위치'
+            description='내 위치'
+          />
+
+          {hospital.map((obj, idx) => {
+            return (
+              <Marker
+                key={obj.id}
+                coordinate={{
+                  latitude: parseFloat(obj.latitude),
+                  longitude: parseFloat(obj.longitude),
+                }}
+                pinColor={color}
+                title={obj.hospital_name}
+                description={obj.address}
+              />
+            );
+          })}
+        </MapView>
       </View>
       <View style={style.list}>
         <ScrollView style={style.scrollView}>
@@ -149,6 +199,10 @@ const style = StyleSheet.create({
     gap: 10,
     justifyContent: 'flex-start',
     backgroundColor: '#ffffff',
+  },
+  mapStyle: {
+    width: '95%',
+    height: '95%',
   },
   scrollView: {
     flex: 1,
