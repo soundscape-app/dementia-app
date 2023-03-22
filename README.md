@@ -5,7 +5,7 @@
 * Expo로 개발되어 있음.
     * Expo SDK 48
 * 패키지 관리 : yarn
-* 패키지 설치 : yarn install
+* 패키지 설치 : yarn
 * 실행 : expo start
 * React Native version : 0.71.3
 * react-native-maps를 사용해 지도를 구현함.
