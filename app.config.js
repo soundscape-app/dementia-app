@@ -11,7 +11,7 @@ module.exports = {
         }
       ]
     ],
-    "name": "dementia-app",
+    "name": "내손에 치매안심주치의",
     "slug": "dementia-app",
     "version": "1.0.1",
     "orientation": "portrait",
