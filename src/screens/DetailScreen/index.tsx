@@ -3,56 +3,13 @@ import * as SQLite from 'expo-sqlite';
 import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import styled from 'styled-components/native';
-import * as FileSystem from "expo-file-system";
-import { Asset } from 'expo-asset';
 import { Linking } from 'react-native';
+import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 
-async function makeDatabase() {
-  const internalDbName = "hospital.db";
-  const sqlDir = FileSystem.documentDirectory + "SQLite/";
-  const csvFilePath = `${FileSystem.documentDirectory}hospital.csv`;
-
-  const db = SQLite.openDatabase(internalDbName);
-  db.transaction((trx) => {
-    trx.executeSql(
-      'CREATE TABLE IF NOT EXISTS hospital (id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_name text, district text, contact text, address text, favorite integer);',
-    )
-  });
-
-  if (!(await FileSystem.getInfoAsync(sqlDir + internalDbName)).exists) {
-    try {
-      const res = await FileSystem.downloadAsync(
-        Asset.fromModule(require('#/csv/hospital_list.csv')).uri,
-        csvFilePath,
-      ); 
-      const copyRes = await FileSystem.readAsStringAsync(res.uri);
-      const csvList = copyRes.split('\n');
-      csvList.map((line, idx) => {
-        if (line !== "") {
-          const args = line.split(",");
-          const hospital_name = args[0];
-          const district = args[1];
-          const contact = args[2];
-          const address = args[3];
-          const favorite = args[4][0];
-          db.transaction((trx) => {
-            trx.executeSql(
-              `INSERT INTO hospital (hospital_name, district, contact, address, favorite) VALUES ("${hospital_name}", "${district}", "${contact}", "${address}", ${favorite})`,
-            )
-          });
-        }
-      });
-    }
-    catch (err) {
-      console.log(err);
-      return;
-    }
-  }
-}
+const internalDbName = "hospital.db";
 
 const getHospitalLists = async (title: string, setList: React.Dispatch<React.SetStateAction<Hospital[]>>) => {
-  const internalDbName = "hospital.db";
-
   let likeStringList: string[] = [];
   switch (title) {
     case '성수권역':
@@ -76,7 +33,7 @@ const getHospitalLists = async (title: string, setList: React.Dispatch<React.Set
     queryString += `district LIKE \'${likeQuery}\'`;
     if(idx !== likeStringList.length - 1) queryString += ' OR ';
   });
-  queryString += ');';
+  queryString += ') ORDER BY favorite DESC, hospital_name;';
 
   console.log(queryString);
 
@@ -112,6 +69,14 @@ const Title = styled.Text<{ color: string }>`
   background-color: ${props => props.color};
 `;
 
+const FavoriteButton = styled.TouchableOpacity<{ favorite: boolean }>`
+  border: 1px solid #f79c40;
+  border-radius: 10px;
+  width: 20px;
+  height: 20px;
+  background-color: ${props => props.favorite ? '#f79c40' : '#ffffff00'};
+`;
+
 type Hospital = {
   hospital_name: string;
   address: string;
@@ -119,40 +84,104 @@ type Hospital = {
   contact: string;
   id: number;
   favorite: boolean;
+  latitude: string;
+  longitude: string;
 };
 
 const DetailScreen = () => {
   const route = useRoute<RouteProp<ParamList, 'routeParam'>>();
   const { color, title } = route.params;
   const [ hospital, setHospital ] = useState([] as Hospital[]);
+  const [ location, setLocation ] = useState<Location.LocationObject | null>(null);
+  const [ errorMsg, setErrorMsg ] = useState<string | null>(null);
 
   const loadAsync = async () => {
-    await makeDatabase();
     await getHospitalLists(title, setHospital);
   }
 
+  const handleFavorite = async (id: number, favorite: boolean) => {
+    const db = SQLite.openDatabase(internalDbName);
+
+    const queryString = `UPDATE hospital SET favorite=${!favorite} WHERE id=${id}`
+
+    db.transaction((trx) => {
+      trx.executeSql(
+        queryString,
+      )
+    });
+
+    await loadAsync();
+  }
+
   useEffect(() => {
-    loadAsync();
+    (async () => {
+      await loadAsync();
+      let { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied.');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync();
+      setLocation(location);
+    })();
   }, []);
 
   return (
     <View style={style.container}>
       <Title color={color}>{title}</Title>
       <View style={style.map}>
-        <Image style={{ width: 200, height: 200 }} source={require('#/imgs/mapImage.png')} />
+        <MapView style={style.mapStyle} 
+          region={{ 
+            latitude: location?.coords?.latitude ?? 37.00000,
+            longitude: location?.coords?.longitude ?? 126.00000,
+            latitudeDelta: 0.025,
+            longitudeDelta: 0.025,
+          }}
+          provider={PROVIDER_GOOGLE}
+        >
+          <Marker
+            coordinate={{
+              latitude: location?.coords?.latitude ?? 37.00000,
+              longitude: location?.coords?.longitude ?? 126.00000,
+            }}
+            pinColor='#fc324e'
+            title='내 위치'
+            description='내 위치'
+          />
+
+          {hospital.map((obj, idx) => {
+            return (
+              <Marker
+                key={obj.id}
+                coordinate={{
+                  latitude: parseFloat(obj.latitude),
+                  longitude: parseFloat(obj.longitude),
+                }}
+                pinColor={color}
+                title={obj.hospital_name}
+                description={obj.address}
+              />
+            );
+          })}
+        </MapView>
       </View>
       <View style={style.list}>
         <ScrollView style={style.scrollView}>
           {hospital.map((obj, idx) => {
             return (
-              <>
-                <Text style={style.listTextStyle} 
-                  key={obj.hospital_name}  
-                  onPress={() => Linking.openURL(`tel:${obj.contact}`)}>
-                    {obj.hospital_name} ({obj.contact})
-                </Text>
+              <View key={obj.id * 2}>
+                <View key={obj.id * 2 + 1} style={style.textBox}>
+                  <Text style={style.listTextStyle} 
+                    key={obj.hospital_name}  
+                    onPress={() => Linking.openURL(`tel:${obj.contact}`)}>
+                      {obj.hospital_name} ({obj.contact}) 
+                  </Text>
+                  <FavoriteButton favorite={obj.favorite} onPress={async () => handleFavorite(obj.id, obj.favorite)} />
+                </View>
                 <Text style={style.listSmallTextStyle} key={obj.address}>{obj.address}</Text>
-              </>
+              </View>
             );
           })}
         </ScrollView>        
@@ -170,6 +199,10 @@ const style = StyleSheet.create({
     gap: 10,
     justifyContent: 'flex-start',
     backgroundColor: '#ffffff',
+  },
+  mapStyle: {
+    width: '95%',
+    height: '95%',
   },
   scrollView: {
     flex: 1,
@@ -190,6 +223,12 @@ const style = StyleSheet.create({
     paddingHorizontal: 10,
     color: '#000000',
     fontWeight: '300',
+  },
+  textBox: {
+    flex: 1,
+    justifyContent: 'space-between',
+    flexDirection: 'row',
+    marginRight: 10,
   },
   list: {
     flex: 4,
