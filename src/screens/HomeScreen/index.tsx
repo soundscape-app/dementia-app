@@ -10,6 +10,17 @@ import * as FileSystem from "expo-file-system";
 import { Asset } from 'expo-asset';
 import * as SQLite from 'expo-sqlite';
 
+type Hospital = {
+  hospital_name: string;
+  address: string;
+  district: string;
+  contact: string;
+  id: number;
+  favorite: boolean;
+  latitude: string;
+  longitude: string;
+};
+
 async function makeDatabase() {
   const internalDbName = "hospital.db";
   const sqlDir = FileSystem.documentDirectory + "SQLite/";
@@ -76,10 +87,27 @@ const CustomButton = styled.TouchableOpacity<{ color: string }>`
 `
 
 const HomeScreen = () => {
+  const internalDbName = "hospital.db";
+
+  const [ hospital, setHospital ] = useState([] as Hospital[]);
   const [ location, setLocation ] = useState<Location.LocationObject | null>(null);
   const [ errorMsg, setErrorMsg ] = useState<string | null>(null);
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
 
+  const getAllHospitals = async () => {
+    const db = SQLite.openDatabase(internalDbName);
+    db.transaction((trx) => {
+      trx.executeSql(
+        'SELECT * FROM hospital',
+        [],
+        (_, { rows }) => {
+          const obj = rows._array;
+          setHospital(obj);
+        }
+      )
+    });
+  }
+  
   const handleExit = () => { 
     BackHandler.exitApp();
   };
@@ -104,6 +132,8 @@ const HomeScreen = () => {
 
   useEffect(() => {
     (async () => {
+      await makeDatabase();
+      await getAllHospitals();
       let { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
@@ -113,8 +143,6 @@ const HomeScreen = () => {
 
       let location = await Location.getCurrentPositionAsync();
       setLocation(location);
-
-      await makeDatabase();
     })();
   }, []);
   
@@ -140,6 +168,20 @@ const HomeScreen = () => {
             title='내 위치'
             description='내 위치'
           />
+          {hospital.map((item, idx) => {
+            return (
+              <Marker
+                key={idx}
+                coordinate={{
+                  latitude: Number(item.latitude),
+                  longitude: Number(item.longitude),
+                }}
+                pinColor='#56c46e'
+                title={item.hospital_name}
+                description={item.address}
+              />
+            );
+          })}
         </MapView>
       </View>
       <View style={style.content}>
