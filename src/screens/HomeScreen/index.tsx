@@ -9,6 +9,7 @@ import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 import * as FileSystem from "expo-file-system";
 import { Asset } from 'expo-asset';
 import * as SQLite from 'expo-sqlite';
+import { Linking } from 'react-native';
 
 type Hospital = {
   hospital_name: string;
@@ -66,6 +67,19 @@ async function makeDatabase() {
     }
   }
 }
+
+const dropDatabase = async () => {
+  const internalDbName = "hospital.db";
+  const db = SQLite.openDatabase(internalDbName);
+  db.transaction((trx) => {
+    trx.executeSql(
+      'DROP TABLE hospital;',
+    )
+  });
+  // delete db file 
+  const sqlDir = FileSystem.documentDirectory + "SQLite/";
+  await FileSystem.deleteAsync(sqlDir + internalDbName);
+};
 
 const Button = ({ color, title, navigation }: { color: string, title: string, navigation: NativeStackNavigationProp<ParamListBase> }) => {
   const handleNavigate = ({ color, title }: { color: string, title: string }) => {
@@ -152,13 +166,22 @@ const HomeScreen = () => {
       <View style={style.map}>
         <MapView style={style.mapStyle} 
           region={{ 
-            latitude: location?.coords?.latitude ?? 37.00000,
-            longitude: location?.coords?.longitude ?? 126.00000,
+            latitude: location?.coords?.latitude ?? 37.561680692372406,
+            longitude: location?.coords?.longitude ?? 127.03523097146459,
             latitudeDelta: 0.00922,
             longitudeDelta: 0.00922,
           }}
           provider={PROVIDER_GOOGLE}
         >
+          <Marker
+            coordinate={{
+              latitude: 37.546356158998016,
+              longitude: 127.04433027743359,
+            }}
+            pinColor='aqua'
+            title='성동구치매안심센터'
+            description='서울 성동구 왕십리로 5길 3 5층'
+          />
           <Marker
             coordinate={{
               latitude: location?.coords?.latitude ?? 37.00000,
@@ -203,6 +226,7 @@ const HomeScreen = () => {
         </View>
       </View>
       <View style={style.footer}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#00000099' }} onPress={() => Linking.openURL(`tel:02-499-8071`)}>문의 및 상담(02-499-8071)</Text>
         <Image style={style.footerLogo} source={require('#/imgs/footerLogo.png')} />
       </View>
     </View>
@@ -220,6 +244,11 @@ const style = StyleSheet.create({
   mapStyle: {
     width: '95%',
     height: '95%',
+  },
+  contact: {
+    flex: 0.2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 32,

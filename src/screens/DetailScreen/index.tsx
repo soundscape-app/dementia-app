@@ -7,6 +7,8 @@ import { Linking } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 
+import Loading from '@/components/Loading';
+
 const internalDbName = "hospital.db";
 
 const getHospitalLists = async (title: string, setList: React.Dispatch<React.SetStateAction<Hospital[]>>) => {
@@ -21,6 +23,7 @@ const getHospitalLists = async (title: string, setList: React.Dispatch<React.Set
       break;
     case '마장권역':
       likeStringList.push('%용답%');
+      likeStringList.push('%동대문%');
       break;
     case '왕십리권역':
       likeStringList.push('%왕십리%');
@@ -143,8 +146,17 @@ const DetailScreen = () => {
         >
           <Marker
             coordinate={{
-              latitude: location?.coords?.latitude ?? 37.00000,
-              longitude: location?.coords?.longitude ?? 126.00000,
+              latitude: 37.546356158998016,
+              longitude: 127.04433027743359,
+            }}
+            pinColor='aqua'
+            title='성동구치매안심센터'
+            description='서울 성동구 왕십리로 5길 3 5층'
+          />
+          <Marker
+            coordinate={{
+              latitude: location?.coords?.latitude ?? 37.561680692372406,
+              longitude: location?.coords?.longitude ?? 127.03523097146459,
             }}
             pinColor='#fc324e'
             title='내 위치'
@@ -168,6 +180,10 @@ const DetailScreen = () => {
         </MapView>
       </View>
       <View style={style.list}>
+        <View style={style.sdg}>
+          <Text style={{ color: '#f79caa', fontSize: 22, fontWeight: 'bold' }} onPress={() => Linking.openURL(`tel:02-499-8071`)} >성동구치매안심센터 (02-499-8071)</Text>
+          <Text style={{ color: '#000000', fontSize: 11 }}>서울 성동구 왕십리로 5길 3 5층</Text>
+        </View>
         <ScrollView style={style.scrollView}>
           {hospital.map((obj, idx) => {
             return (
@@ -199,6 +215,17 @@ const style = StyleSheet.create({
     gap: 10,
     justifyContent: 'flex-start',
     backgroundColor: '#ffffff',
+  },
+  sdg: {
+    flex: 0.15,
+    justifyContent: 'center',
+    alignContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f4f4f4',
+    borderRadius: 10,
+    marginBottom: 10,
+    gap: 4,
+    padding: 4,
   },
   mapStyle: {
     width: '95%',
