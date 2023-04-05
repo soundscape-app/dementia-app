@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as SQLite from 'expo-sqlite';
-import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, Button, TouchableOpacity } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import styled from 'styled-components/native';
 import { Linking } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 import Loading from '@/components/Loading';
 
@@ -92,11 +93,14 @@ type Hospital = {
 };
 
 const DetailScreen = () => {
+  const mapRef = useRef<MapView>(null);
+
   const route = useRoute<RouteProp<ParamList, 'routeParam'>>();
   const { color, title } = route.params;
   const [ hospital, setHospital ] = useState([] as Hospital[]);
   const [ location, setLocation ] = useState<Location.LocationObject | null>(null);
   const [ errorMsg, setErrorMsg ] = useState<string | null>(null);
+  const [ selectedIdx, setSelectedIdx ] = useState(-1);
 
   const loadAsync = async () => {
     await getHospitalLists(title, setHospital);
@@ -114,7 +118,16 @@ const DetailScreen = () => {
     });
 
     await loadAsync();
-  }
+  };
+  
+  const handleFocusOnLocation = ({ latitude, longitude }: { latitude: number, longitude: number }) => {
+    mapRef.current?.animateToRegion({
+      latitude: latitude,
+      longitude: longitude,
+      latitudeDelta: 0.0075,
+      longitudeDelta: 0.0075,
+    }, 1000);
+  };
 
   useEffect(() => {
     (async () => {
@@ -135,7 +148,11 @@ const DetailScreen = () => {
     <View style={style.container}>
       <Title color={color}>{title}</Title>
       <View style={style.map}>
+        <TouchableOpacity style={style.myPositionButton} onPress={() => handleFocusOnLocation({ latitude: location?.coords?.latitude ?? 37.00000, longitude: location?.coords?.longitude ?? 126.00000, })}>
+          <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#FFFFFF'}}>내 위치</Text>
+        </TouchableOpacity>
         <MapView style={style.mapStyle} 
+          ref={mapRef}
           region={{ 
             latitude: location?.coords?.latitude ?? 37.00000,
             longitude: location?.coords?.longitude ?? 126.00000,
@@ -191,9 +208,13 @@ const DetailScreen = () => {
                 <View key={obj.id * 2 + 1} style={style.textBox}>
                   <Text style={style.listTextStyle} 
                     key={obj.hospital_name}  
-                    onPress={() => Linking.openURL(`tel:${obj.contact}`)}>
+                    onPress={() => {
+                      setSelectedIdx(obj.id);
+                      handleFocusOnLocation({ latitude: parseFloat(obj.latitude), longitude: parseFloat(obj.longitude) })
+                    }}>
                       {obj.hospital_name} ({obj.contact}) 
                   </Text>
+                  {(obj.id === selectedIdx) && <Icon name="phone" size={30} onPress={() => Linking.openURL(`tel:${obj.contact}`)} style={{ position:'absolute', right:25 }} color="#f79c40" />}
                   <FavoriteButton favorite={obj.favorite} onPress={async () => handleFavorite(obj.id, obj.favorite)} />
                 </View>
                 <Text style={style.listSmallTextStyle} key={obj.address}>{obj.address}</Text>
@@ -215,6 +236,20 @@ const style = StyleSheet.create({
     gap: 10,
     justifyContent: 'flex-start',
     backgroundColor: '#ffffff',
+  },
+  myPositionButton: {
+    position: 'absolute',
+    top: 10,
+    right: 20,
+    width: 50,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#fc324e',
+    zIndex: 2,
+    textAlign: 'center',
+    justifyContent: 'center',
+    alignContent: 'center',
+    alignItems: 'center',
   },
   sdg: {
     flex: 0.15,
@@ -270,6 +305,7 @@ const style = StyleSheet.create({
     alignContent: 'center',
     alignItems: 'center',
     backgroundColor: '#d5e9f5',
+    zIndex: 1,
   },
   content: {
     flex: 1.4,

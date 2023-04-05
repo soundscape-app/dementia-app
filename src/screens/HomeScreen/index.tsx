@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, Alert, TouchableOpacity } from 'react-native';
 import { ParamListBase, useNavigation, useFocusEffect } from '@react-navigation/native';
 import styled from 'styled-components/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -103,6 +103,7 @@ const CustomButton = styled.TouchableOpacity<{ color: string }>`
 const HomeScreen = () => {
   const internalDbName = "hospital.db";
 
+  const mapRef = useRef<MapView>(null);
   const [ hospital, setHospital ] = useState([] as Hospital[]);
   const [ location, setLocation ] = useState<Location.LocationObject | null>(null);
   const [ errorMsg, setErrorMsg ] = useState<string | null>(null);
@@ -136,6 +137,15 @@ const HomeScreen = () => {
       {text: '종료하기', onPress: () => handleExit()},
     ]);
 
+  const handleFocusOnLocation = ({ latitude, longitude }: { latitude: number, longitude: number }) => {
+    mapRef.current?.animateToRegion({
+      latitude: latitude,
+      longitude: longitude,
+      latitudeDelta: 0.0075,
+      longitudeDelta: 0.0075,
+    }, 1000);
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {createTwoButtonAlert(); return true;}
@@ -164,7 +174,11 @@ const HomeScreen = () => {
     <View style={style.container}>
       <Text style={style.title}>내손에 치매안심주치의</Text>
       <View style={style.map}>
+        <TouchableOpacity style={style.myPositionButton} onPress={() => handleFocusOnLocation({ latitude: location?.coords?.latitude ?? 37.00000, longitude: location?.coords?.longitude ?? 126.00000, })}>
+          <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#FFFFFF'}}>내 위치</Text>
+        </TouchableOpacity>
         <MapView style={style.mapStyle} 
+          ref={mapRef}
           region={{ 
             latitude: location?.coords?.latitude ?? 37.561680692372406,
             longitude: location?.coords?.longitude ?? 127.03523097146459,
@@ -240,6 +254,20 @@ const style = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'space-evenly',
     backgroundColor: '#ffffff',
+  },
+  myPositionButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 50,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#fc324e',
+    zIndex: 2,
+    textAlign: 'center',
+    justifyContent: 'center',
+    alignContent: 'center',
+    alignItems: 'center',
   },
   mapStyle: {
     width: '95%',
