@@ -101,7 +101,6 @@ const DetailScreen = () => {
   const [ hospital, setHospital ] = useState([] as Hospital[]);
   const [ location, setLocation ] = useState<Location.LocationObject | null>(null);
   const [ errorMsg, setErrorMsg ] = useState<string | null>(null);
-  const [ selectedIdx, setSelectedIdx ] = useState(-1);
 
   const loadAsync = async () => {
     await getHospitalLists(title, setHospital);
@@ -212,12 +211,11 @@ const DetailScreen = () => {
                   <Text style={style.listTextStyle} 
                     key={obj.hospital_name}  
                     onPress={() => {
-                      setSelectedIdx(idx);
                       handleFocusOnLocation({ latitude: parseFloat(obj.latitude), longitude: parseFloat(obj.longitude), idx: idx })
                     }}>
                       {obj.hospital_name} ({obj.contact}) 
                   </Text>
-                  {(idx === selectedIdx) && <Icon name="phone" size={30} onPress={() => Linking.openURL(`tel:${obj.contact}`)} style={{ position:'absolute', right:25 }} color="#f79c40" />}
+                  <Icon name="phone" size={30} onPress={() => Linking.openURL(`tel:${obj.contact}`)} style={{ position:'absolute', right:25 }} color="#f79c40" />
                   <FavoriteButton favorite={obj.favorite} onPress={async () => handleFavorite(obj.id, obj.favorite)} />
                 </View>
                 <Text style={style.listSmallTextStyle} key={obj.address}>{obj.address}</Text>
