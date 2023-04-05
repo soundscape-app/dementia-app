@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, Image, ScrollView, Button, TouchableOpacity } f
 import { RouteProp, useRoute } from '@react-navigation/native';
 import styled from 'styled-components/native';
 import { Linking } from 'react-native';
-import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Marker, MapMarker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
@@ -94,6 +94,7 @@ type Hospital = {
 
 const DetailScreen = () => {
   const mapRef = useRef<MapView>(null);
+  const markerRef = useRef<(MapMarker | null)[]>([]);
 
   const route = useRoute<RouteProp<ParamList, 'routeParam'>>();
   const { color, title } = route.params;
@@ -120,13 +121,14 @@ const DetailScreen = () => {
     await loadAsync();
   };
   
-  const handleFocusOnLocation = ({ latitude, longitude }: { latitude: number, longitude: number }) => {
+  const handleFocusOnLocation = ({ latitude, longitude, idx }: { latitude: number, longitude: number, idx: number }) => {
     mapRef.current?.animateToRegion({
       latitude: latitude,
       longitude: longitude,
       latitudeDelta: 0.0075,
       longitudeDelta: 0.0075,
-    }, 1000);
+    }, 600);
+    if(idx !== -1) markerRef.current[idx]?.showCallout();
   };
 
   useEffect(() => {
@@ -148,7 +150,7 @@ const DetailScreen = () => {
     <View style={style.container}>
       <Title color={color}>{title}</Title>
       <View style={style.map}>
-        <TouchableOpacity style={style.myPositionButton} onPress={() => handleFocusOnLocation({ latitude: location?.coords?.latitude ?? 37.00000, longitude: location?.coords?.longitude ?? 126.00000, })}>
+        <TouchableOpacity style={style.myPositionButton} onPress={() => handleFocusOnLocation({ latitude: location?.coords?.latitude ?? 37.00000, longitude: location?.coords?.longitude ?? 126.00000, idx: -1})}>
           <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#FFFFFF'}}>내 위치</Text>
         </TouchableOpacity>
         <MapView style={style.mapStyle} 
@@ -188,6 +190,7 @@ const DetailScreen = () => {
                   latitude: parseFloat(obj.latitude),
                   longitude: parseFloat(obj.longitude),
                 }}
+                ref={el => markerRef.current[idx] = el}
                 pinColor={color}
                 title={obj.hospital_name}
                 description={obj.address}
@@ -209,12 +212,12 @@ const DetailScreen = () => {
                   <Text style={style.listTextStyle} 
                     key={obj.hospital_name}  
                     onPress={() => {
-                      setSelectedIdx(obj.id);
-                      handleFocusOnLocation({ latitude: parseFloat(obj.latitude), longitude: parseFloat(obj.longitude) })
+                      setSelectedIdx(idx);
+                      handleFocusOnLocation({ latitude: parseFloat(obj.latitude), longitude: parseFloat(obj.longitude), idx: idx })
                     }}>
                       {obj.hospital_name} ({obj.contact}) 
                   </Text>
-                  {(obj.id === selectedIdx) && <Icon name="phone" size={30} onPress={() => Linking.openURL(`tel:${obj.contact}`)} style={{ position:'absolute', right:25 }} color="#f79c40" />}
+                  {(idx === selectedIdx) && <Icon name="phone" size={30} onPress={() => Linking.openURL(`tel:${obj.contact}`)} style={{ position:'absolute', right:25 }} color="#f79c40" />}
                   <FavoriteButton favorite={obj.favorite} onPress={async () => handleFavorite(obj.id, obj.favorite)} />
                 </View>
                 <Text style={style.listSmallTextStyle} key={obj.address}>{obj.address}</Text>
