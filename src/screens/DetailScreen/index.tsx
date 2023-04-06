@@ -208,17 +208,19 @@ const DetailScreen = () => {
             return (
               <View key={obj.id * 2}>
                 <View key={obj.id * 2 + 1} style={style.textBox}>
-                  <Text style={style.listTextStyle} 
-                    key={obj.hospital_name}  
-                    onPress={() => {
-                      handleFocusOnLocation({ latitude: parseFloat(obj.latitude), longitude: parseFloat(obj.longitude), idx: idx })
-                    }}>
-                      {obj.hospital_name} ({obj.contact}) 
-                  </Text>
-                  <Icon name="phone" size={30} onPress={() => Linking.openURL(`tel:${obj.contact}`)} style={{ position:'absolute', right:25 }} color="#f79c40" />
-                  <FavoriteButton favorite={obj.favorite} onPress={async () => handleFavorite(obj.id, obj.favorite)} />
+                  <View key={obj.contact} style={{ flex: 1, flexDirection: 'row', paddingLeft: 10 }}>
+                    <Icon name={obj.favorite ? "star" : "star-o"} size={25} color="#f79c40" onPress={async () => handleFavorite(obj.id, obj.favorite)} />
+                    <Text style={style.listTextStyle} 
+                      key={obj.hospital_name}  
+                      onPress={() => {
+                        handleFocusOnLocation({ latitude: parseFloat(obj.latitude), longitude: parseFloat(obj.longitude), idx: idx })
+                      }}>
+                        {obj.hospital_name}
+                    </Text>
+                  </View>
+                  <Icon name="phone" size={30} onPress={() => Linking.openURL(`tel:${obj.contact}`)} color="#f79c40" />
                 </View>
-                <Text style={style.listSmallTextStyle} key={obj.address}>{obj.address}</Text>
+                <Text style={style.listSmallTextStyle} key={obj.address}>{obj.address} / ({obj.contact})</Text>
               </View>
             );
           })}

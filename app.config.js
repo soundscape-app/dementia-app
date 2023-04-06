@@ -13,7 +13,7 @@ module.exports = {
     ],
     "name": "치매안심주치의",
     "slug": "dementia-app",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
